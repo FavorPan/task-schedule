@@ -46,3 +46,7 @@
 .total-price {
   margin-top: 10px;
 }
+
+.done-text {
+  text-decoration: line-through;
+}

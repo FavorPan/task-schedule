@@ -43,6 +43,9 @@ export const useAction = () => {
   const [scheduleList, setScheduleList] = useState<IScheduleList[]>([]);
   const [scheduleTotalPrice, setScheduleTotalPrice] =
     useState<ITotalPrice>(baseTotalPrice);
+  const [doneList, setDoneList] = useState<IScheduleList[]>([]);
+  const [doneTotalPrice, setDoneTotalPrice] =
+    useState<ITotalPrice>(baseTotalPrice);
 
   const getExchangeRate = async (base: string, symbols: string) => {
     const result = await api.get(`/latest?base=${base}&symbols=${symbols}`);
@@ -85,6 +88,16 @@ export const useAction = () => {
     }
   };
 
+  const calcTotalPrice = (list: IScheduleList[]) => {
+    const newTotal = JSON.parse(JSON.stringify(baseTotalPrice));
+    list.forEach((schedule) => {
+      newTotal.RUB += schedule.RUB;
+      newTotal.CNY += schedule.CNY;
+      newTotal.USD += schedule.USD;
+    });
+    return newTotal;
+  };
+
   const onAdd = () => {
     if (!!task && !!price && !!currency) {
       setScheduleList([...scheduleList, transformPrice()]);
@@ -93,22 +106,43 @@ export const useAction = () => {
     }
   };
 
-  const onCheckboxClick = (index: number) => {};
+  const onCheckboxClick = (index: number) => {
+    const doneSchedule = scheduleList.find((schedule, i) => i === index);
+    setScheduleList(scheduleList.filter((schedule, i) => i !== index));
+    !!doneSchedule && setDoneList([...doneList, doneSchedule]);
+  };
 
   const onScheduleSum = useCallback(() => {
-    const newTotal = JSON.parse(JSON.stringify(scheduleTotalPrice));
-    const lastSchedule = scheduleList[scheduleList.length - 1];
-    newTotal.RUB += lastSchedule.RUB;
-    newTotal.CNY += lastSchedule.CNY;
-    newTotal.USD += lastSchedule.USD;
+    const newTotal = calcTotalPrice(scheduleList);
     setScheduleTotalPrice(newTotal);
   }, [scheduleList]);
+
+  const onDoneCheckboxClick = (index: number) => {
+    const schedule = doneList.find((doneItem, i) => i === index);
+    setDoneList(doneList.filter((doneItem, i) => i !== index));
+    !!schedule && setScheduleList([...scheduleList, schedule]);
+  };
+
+  const onDoneSum = useCallback(() => {
+    const newTotal = calcTotalPrice(doneList);
+    setDoneTotalPrice(newTotal);
+  }, [doneList]);
 
   useEffect(() => {
     if (scheduleList.length > 0) {
       onScheduleSum();
+    } else {
+      setScheduleTotalPrice(baseTotalPrice);
     }
   }, [scheduleList]);
+
+  useEffect(() => {
+    if (doneList.length > 0) {
+      onDoneSum();
+    } else {
+      setDoneTotalPrice(baseTotalPrice);
+    }
+  }, [doneList]);
 
   useEffect(() => {
     onBaseUSD();
@@ -124,10 +158,13 @@ export const useAction = () => {
     USDExchangeCNY,
     scheduleList,
     scheduleTotalPrice,
+    doneList,
+    doneTotalPrice,
     setTask,
     setPrice,
     setCurrency,
     onAdd,
     onCheckboxClick,
+    onDoneCheckboxClick,
   };
 };
