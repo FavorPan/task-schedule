@@ -1,22 +1,10 @@
-import React, { useMemo } from "react";
+import React from "react";
 import "./App.css";
-import {
-  Input,
-  InputNumber,
-  Select,
-  Button,
-  Card,
-  Row,
-  Col,
-  Checkbox,
-} from "antd";
+import { Input, InputNumber, Select, Button, Card, Row, Col, Checkbox, Form } from "antd";
 import { useAction } from "./hooks";
 
-function App() {
+const App: React.FC = () => {
   const {
-    task,
-    price,
-    currency,
     currencyTypes,
     CNYExchangeRUB,
     USDExchangeRUB,
@@ -25,9 +13,7 @@ function App() {
     scheduleTotalPrice,
     doneList,
     doneTotalPrice,
-    setTask,
-    setPrice,
-    setCurrency,
+    form,
     onAdd,
     onCheckboxClick,
     onDoneCheckboxClick,
@@ -36,34 +22,22 @@ function App() {
   return (
     <div className="root">
       <div className="container">
-        <div className="header">
-          <div>
-            <Input
-              placeholder="任务"
-              className="input"
-              onChange={(e) => setTask(e.target?.value)}
-            />
-            <InputNumber
-              placeholder="价格"
-              parser={(value) =>
-                !!value
-                  ? Number(value.replace(/[^\d{1,}\d{1,}|\d{1,}]/g, ""))
-                  : 0
-              }
-              className="input"
-              onChange={(e) => setPrice(Number(e))}
-            />
-            <Select
-              options={currencyTypes}
-              placeholder="货币类型"
-              className="input"
-              onChange={(e) => setCurrency(e)}
-            />
-          </div>
-          <Button type="primary" className="button" onClick={onAdd}>
-            添加
-          </Button>
-        </div>
+        <Form form={form} name="form" layout="inline" onFinish={onAdd}>
+          <Form.Item name="task">
+            <Input placeholder="任务" className="input" />
+          </Form.Item>
+          <Form.Item name="price">
+            <InputNumber placeholder="价格" parser={(value) => (!!value ? value.replace(/[^\d{1,}\d{1,}|\d{1,}]/g, "") : "")} className="input" />
+          </Form.Item>
+          <Form.Item name="currency">
+            <Select options={currencyTypes} placeholder="货币类型" className="input" />
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" className="button" htmlType="submit">
+              添加
+            </Button>
+          </Form.Item>
+        </Form>
         <div className="exchange-rate">
           <span className="exchange-rate-text">{CNYExchangeRUB} ₽/￥</span>
           <span className="exchange-rate-text">{USDExchangeRUB} ₽/$</span>
@@ -112,6 +86,6 @@ function App() {
       </div>
     </div>
   );
-}
+};
 
 export default App;
