@@ -1,19 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { api } from "./api";
-import { message } from "antd";
-
-interface IScheduleList {
-  task: string;
-  RUB: number;
-  CNY: number;
-  USD: number;
-}
-
-interface ITotalPrice {
-  RUB: number;
-  CNY: number;
-  USD: number;
-}
+import { message, Form } from "antd";
+import { IGetExchangeRate, IScheduleList, ITotalPrice, IForm } from "./types";
 
 enum currencyType {
   RUB = 1,
@@ -34,26 +22,22 @@ const baseTotalPrice = {
 };
 
 export const useAction = () => {
-  const [task, setTask] = useState<string>("");
-  const [price, setPrice] = useState<number>(0);
-  const [currency, setCurrency] = useState<number>(0);
   const [CNYExchangeRUB, setCNYExchangeRUB] = useState<number>(0);
   const [USDExchangeRUB, setUSDExchangeRUB] = useState<number>(0);
   const [USDExchangeCNY, setUSDExchangeCNY] = useState<number>(0);
   const [scheduleList, setScheduleList] = useState<IScheduleList[]>([]);
-  const [scheduleTotalPrice, setScheduleTotalPrice] =
-    useState<ITotalPrice>(baseTotalPrice);
+  const [scheduleTotalPrice, setScheduleTotalPrice] = useState<ITotalPrice>(baseTotalPrice);
   const [doneList, setDoneList] = useState<IScheduleList[]>([]);
-  const [doneTotalPrice, setDoneTotalPrice] =
-    useState<ITotalPrice>(baseTotalPrice);
+  const [doneTotalPrice, setDoneTotalPrice] = useState<ITotalPrice>(baseTotalPrice);
 
-  const getExchangeRate = async (base: string, symbols: string) => {
+  const [form] = Form.useForm();
+
+  const getExchangeRate = async (base: string, symbols: string): Promise<IGetExchangeRate> => {
     const result = await api.get(`/latest?base=${base}&symbols=${symbols}`);
     return result.data.rates;
   };
 
-  const toFixedPrice = (price: number, fix: number) =>
-    Number(price.toFixed(fix));
+  const toFixedPrice = (price: number, fix: number) => Number(price.toFixed(fix));
 
   const onBaseUSD = useCallback(async () => {
     const rates = await getExchangeRate("USD", "CNY,RUB");
@@ -62,28 +46,28 @@ export const useAction = () => {
     setUSDExchangeCNY(toFixedPrice(rates.CNY, 3));
   }, []);
 
-  const transformPrice = () => {
-    switch (currency) {
+  const transformPrice = (values: IForm) => {
+    switch (values.currency) {
       case currencyType.RUB:
         return {
-          task,
-          RUB: price,
-          CNY: toFixedPrice(price / CNYExchangeRUB, 5),
-          USD: toFixedPrice(price / USDExchangeRUB, 5),
+          task: values.task,
+          RUB: values.price,
+          CNY: toFixedPrice(values.price / CNYExchangeRUB, 5),
+          USD: toFixedPrice(values.price / USDExchangeRUB, 5),
         };
       case currencyType.CNY:
         return {
-          task,
-          RUB: toFixedPrice(price * CNYExchangeRUB, 5),
-          CNY: price,
-          USD: toFixedPrice(price / USDExchangeCNY, 5),
+          task: values.task,
+          RUB: toFixedPrice(values.price * CNYExchangeRUB, 5),
+          CNY: values.price,
+          USD: toFixedPrice(values.price / USDExchangeCNY, 5),
         };
       default:
         return {
-          task,
-          RUB: toFixedPrice(price * USDExchangeRUB, 5),
-          CNY: toFixedPrice(price * USDExchangeCNY, 5),
-          USD: price,
+          task: values.task,
+          RUB: toFixedPrice(values.price * USDExchangeRUB, 5),
+          CNY: toFixedPrice(values.price * USDExchangeCNY, 5),
+          USD: values.price,
         };
     }
   };
@@ -98,9 +82,10 @@ export const useAction = () => {
     return newTotal;
   };
 
-  const onAdd = () => {
-    if (!!task && !!price && !!currency) {
-      setScheduleList([...scheduleList, transformPrice()]);
+  const onAdd = (values: IForm) => {
+    if (!!values.task && !!values.price && !!values.currency) {
+      setScheduleList([...scheduleList, transformPrice(values)]);
+      form.resetFields();
     } else {
       message.error("请完整填写数据");
     }
@@ -134,6 +119,7 @@ export const useAction = () => {
     } else {
       setScheduleTotalPrice(baseTotalPrice);
     }
+    // eslint-disable-next-line
   }, [scheduleList]);
 
   useEffect(() => {
@@ -142,6 +128,7 @@ export const useAction = () => {
     } else {
       setDoneTotalPrice(baseTotalPrice);
     }
+    // eslint-disable-next-line
   }, [doneList]);
 
   useEffect(() => {
@@ -149,9 +136,6 @@ export const useAction = () => {
   }, [onBaseUSD]);
 
   return {
-    task,
-    price,
-    currency,
     currencyTypes,
     CNYExchangeRUB,
     USDExchangeRUB,
@@ -160,9 +144,7 @@ export const useAction = () => {
     scheduleTotalPrice,
     doneList,
     doneTotalPrice,
-    setTask,
-    setPrice,
-    setCurrency,
+    form,
     onAdd,
     onCheckboxClick,
     onDoneCheckboxClick,
