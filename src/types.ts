@@ -10,12 +10,6 @@ export interface IScheduleList {
   USD: number;
 }
 
-export interface ITotalPrice {
-  RUB: number;
-  CNY: number;
-  USD: number;
-}
-
 export interface IForm {
   task: string;
   price: number;

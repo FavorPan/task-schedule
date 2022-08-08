@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { api } from "./api";
 import { message, Form } from "antd";
-import { IGetExchangeRate, IScheduleList, ITotalPrice, IForm } from "./types";
+import { IGetExchangeRate, IScheduleList, IForm } from "./types";
 
 enum currencyType {
   RUB = 1,
@@ -15,29 +15,46 @@ const currencyTypes = [
   { label: "美元", value: currencyType.USD },
 ];
 
-const baseTotalPrice = {
+const baseSchedule: IScheduleList = {
+  task: "",
   RUB: 0,
   CNY: 0,
   USD: 0,
 };
+
+const calcTotalPrice = (list: IScheduleList[]) => {
+  if (list.length > 0) {
+    return list.reduce((total, item) => {
+      return {
+        task: "",
+        RUB: total.RUB + item.RUB,
+        CNY: total.CNY + item.CNY,
+        USD: total.USD + item.USD,
+      };
+    });
+  } else {
+    return baseSchedule;
+  }
+};
+
+const toFixedPrice = (price: number, fix: number) => Number(price.toFixed(fix));
 
 export const useAction = () => {
   const [CNYExchangeRUB, setCNYExchangeRUB] = useState<number>(0);
   const [USDExchangeRUB, setUSDExchangeRUB] = useState<number>(0);
   const [USDExchangeCNY, setUSDExchangeCNY] = useState<number>(0);
   const [scheduleList, setScheduleList] = useState<IScheduleList[]>([]);
-  const [scheduleTotalPrice, setScheduleTotalPrice] = useState<ITotalPrice>(baseTotalPrice);
   const [doneList, setDoneList] = useState<IScheduleList[]>([]);
-  const [doneTotalPrice, setDoneTotalPrice] = useState<ITotalPrice>(baseTotalPrice);
 
   const [form] = Form.useForm();
 
-  const getExchangeRate = async (base: string, symbols: string): Promise<IGetExchangeRate> => {
+  const getExchangeRate = async (
+    base: string,
+    symbols: string
+  ): Promise<IGetExchangeRate> => {
     const result = await api.get(`/latest?base=${base}&symbols=${symbols}`);
     return result.data.rates;
   };
-
-  const toFixedPrice = (price: number, fix: number) => Number(price.toFixed(fix));
 
   const onBaseUSD = useCallback(async () => {
     const rates = await getExchangeRate("USD", "CNY,RUB");
@@ -72,16 +89,6 @@ export const useAction = () => {
     }
   };
 
-  const calcTotalPrice = (list: IScheduleList[]) => {
-    const newTotal = JSON.parse(JSON.stringify(baseTotalPrice));
-    list.forEach((schedule) => {
-      newTotal.RUB += schedule.RUB;
-      newTotal.CNY += schedule.CNY;
-      newTotal.USD += schedule.USD;
-    });
-    return newTotal;
-  };
-
   const onAdd = (values: IForm) => {
     if (!!values.task && !!values.price && !!values.currency) {
       setScheduleList([...scheduleList, transformPrice(values)]);
@@ -97,9 +104,8 @@ export const useAction = () => {
     !!doneSchedule && setDoneList([...doneList, doneSchedule]);
   };
 
-  const onScheduleSum = useCallback(() => {
-    const newTotal = calcTotalPrice(scheduleList);
-    setScheduleTotalPrice(newTotal);
+  const scheduleTotalPrice = useCallback(() => {
+    return calcTotalPrice(scheduleList);
   }, [scheduleList]);
 
   const onDoneCheckboxClick = (index: number) => {
@@ -108,27 +114,8 @@ export const useAction = () => {
     !!schedule && setScheduleList([...scheduleList, schedule]);
   };
 
-  const onDoneSum = useCallback(() => {
-    const newTotal = calcTotalPrice(doneList);
-    setDoneTotalPrice(newTotal);
-  }, [doneList]);
-
-  useEffect(() => {
-    if (scheduleList.length > 0) {
-      onScheduleSum();
-    } else {
-      setScheduleTotalPrice(baseTotalPrice);
-    }
-    // eslint-disable-next-line
-  }, [scheduleList]);
-
-  useEffect(() => {
-    if (doneList.length > 0) {
-      onDoneSum();
-    } else {
-      setDoneTotalPrice(baseTotalPrice);
-    }
-    // eslint-disable-next-line
+  const doneTotalPrice = useCallback(() => {
+    return calcTotalPrice(doneList);
   }, [doneList]);
 
   useEffect(() => {
@@ -141,10 +128,10 @@ export const useAction = () => {
     USDExchangeRUB,
     USDExchangeCNY,
     scheduleList,
-    scheduleTotalPrice,
     doneList,
-    doneTotalPrice,
     form,
+    scheduleTotalPrice,
+    doneTotalPrice,
     onAdd,
     onCheckboxClick,
     onDoneCheckboxClick,
